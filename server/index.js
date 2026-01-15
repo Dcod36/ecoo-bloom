@@ -16,10 +16,14 @@ app.use(cors());
 const authRoutes = require('./routes/authRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
+const wasteRoutes = require('./routes/wasteRoutes');
+const issueRoutes = require('./routes/issueRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/waste', wasteRoutes);
+app.use('/api/issues', issueRoutes);
 
 app.get('/', (req, res) => {
     res.send('EcoBloom API is running');

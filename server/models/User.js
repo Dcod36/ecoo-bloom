@@ -20,6 +20,10 @@ const userSchema = mongoose.Schema({
         enum: ['user', 'admin'],
         default: 'user',
     },
+    rewardPoints: {
+        type: Number,
+        default: 0,
+    },
 }, {
     timestamps: true,
 });

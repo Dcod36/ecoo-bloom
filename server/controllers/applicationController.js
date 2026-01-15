@@ -73,7 +73,7 @@ const getJobApplications = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized to view these applications' });
         }
 
-        const applications = await Application.find({ job: req.params.jobId }).populate('user', 'name email');
+        const applications = await Application.find({ job: req.params.jobId }).populate('user', 'name email rewardPoints');
         res.json(applications);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -105,4 +105,30 @@ const markAsPaid = async (req, res) => {
     }
 };
 
-module.exports = { applyForJob, getMyApplications, getJobApplications, markAsPaid };
+// @desc    Admit a volunteer (change status from applied to admitted)
+// @route   PUT /api/applications/:id/admit
+// @access  Private/Admin
+const admitApplication = async (req, res) => {
+    try {
+        const application = await Application.findById(req.params.id).populate('job');
+
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        // Verify admin owns the job
+        if (application.job.admin.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        application.status = 'admitted';
+        await application.save();
+
+        const updatedApp = await Application.findById(req.params.id).populate('user', 'name email rewardPoints');
+        res.json(updatedApp);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { applyForJob, getMyApplications, getJobApplications, markAsPaid, admitApplication };
