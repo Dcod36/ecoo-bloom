@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createJob, getJobs, getJobById, getMyJobs, completeJob } = require('../controllers/jobController');
+const { createJob, getJobs, getJobById, getMyJobs, completeJob, deleteJob } = require('../controllers/jobController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 router.route('/')
@@ -10,7 +10,8 @@ router.route('/')
 router.get('/myjobs', protect, admin, getMyJobs);
 
 router.route('/:id')
-    .get(getJobById);
+    .get(getJobById)
+    .delete(protect, admin, deleteJob);
 
 router.patch('/:id/complete', protect, admin, completeJob);
 

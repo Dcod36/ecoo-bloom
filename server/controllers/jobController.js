@@ -90,4 +90,26 @@ const completeJob = async (req, res) => {
     }
 };
 
-module.exports = { createJob, getJobs, getJobById, getMyJobs, completeJob };
+// @desc    Delete a job
+// @route   DELETE /api/jobs/:id
+// @access  Private/Admin
+const deleteJob = async (req, res) => {
+    try {
+        const job = await Job.findById(req.params.id);
+
+        if (job) {
+            if (job.admin.toString() !== req.user._id.toString()) {
+                return res.status(401).json({ message: 'Not authorized to delete this job' });
+            }
+
+            await Job.findByIdAndDelete(req.params.id);
+            res.json({ message: 'Job deleted successfully' });
+        } else {
+            res.status(404).json({ message: 'Job not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { createJob, getJobs, getJobById, getMyJobs, completeJob, deleteJob };

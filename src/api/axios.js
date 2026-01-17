@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'https://ecoo-bloom.vercel.app/', // Adjust if you deploy later
+    baseURL: 'http://localhost:5000/api', // Local development server
 });
 
 api.interceptors.request.use(

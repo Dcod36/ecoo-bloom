@@ -23,6 +23,18 @@ const AdminDashboard = () => {
         fetchJobs();
     }, []);
 
+    const handleDeleteJob = async (jobId) => {
+        if (window.confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
+            try {
+                await axios.delete(`/jobs/${jobId}`);
+                setJobs(jobs.filter(job => job._id !== jobId));
+            } catch (error) {
+                console.error("Error deleting job", error);
+                alert('Failed to delete job. Please try again.');
+            }
+        }
+    };
+
     return (
         <>
             <Navbar />
@@ -82,10 +94,17 @@ const AdminDashboard = () => {
                                 </p>
                             </div>
 
-                            <div className="flex gap-4">
+                            <div className="flex gap-3">
                                 <Link to={`/admin/job/${job._id}`} className="flex-1 py-2.5 rounded-xl border-2 border-green-500/20 text-green-600 font-bold text-center hover:bg-green-500 hover:text-white hover:border-green-500 transition-all duration-300 block">
                                     Manage Applicants
                                 </Link>
+                                <button
+                                    onClick={() => handleDeleteJob(job._id)}
+                                    className="px-4 py-2.5 rounded-xl border-2 border-red-500/20 text-red-500 font-bold hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-300"
+                                    title="Delete Job"
+                                >
+                                    🗑️
+                                </button>
                             </div>
                         </motion.div>
                     ))}

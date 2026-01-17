@@ -17,11 +17,8 @@ const Signup = () => {
         e.preventDefault();
         try {
             await register(name, email, password, role);
-            if (role === 'admin') {
-                navigate('/admin');
-            } else {
-                navigate('/dashboard');
-            }
+            // Redirect to login page after successful registration
+            navigate('/login');
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed');
         }
