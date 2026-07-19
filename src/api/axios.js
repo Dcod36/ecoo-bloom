@@ -18,4 +18,16 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// Auto-logout on 401 (e.g. after server restart with fresh in-memory DB)
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;

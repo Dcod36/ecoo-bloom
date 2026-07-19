@@ -16,6 +16,13 @@ const MyApplications = () => {
             }
         };
         fetchApps();
+
+        const handleFocus = () => {
+            fetchApps();
+        };
+
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
     }, []);
 
     return (

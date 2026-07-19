@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import WasteMap from '../components/WasteMap';
 import WasteChatbot from '../components/WasteChatbot';
 import ReportIssueModal from '../components/ReportIssueModal';
+import CompleteProfileModal from '../components/CompleteProfileModal';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -44,7 +45,11 @@ const UserDashboard = () => {
                 // Create a map of jobId -> application status
                 const appMap = {};
                 data.forEach(app => {
-                    appMap[app.job._id] = app.status;
+                    if (app.job && app.job._id) {
+                        appMap[app.job._id] = app.status;
+                    } else if (app.job) {
+                        appMap[app.job] = app.status;
+                    }
                 });
                 setMyApplications(appMap);
             } catch (error) {
@@ -54,6 +59,15 @@ const UserDashboard = () => {
         fetchJobs();
         fetchRewardPoints();
         fetchMyApplications();
+
+        const handleFocus = () => {
+            fetchJobs();
+            fetchRewardPoints();
+            fetchMyApplications();
+        };
+
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
     }, []);
 
     const fetchWasteData = async () => {
@@ -311,6 +325,16 @@ const UserDashboard = () => {
                     api.get('/issues/rewards').then(res => setRewardPoints(res.data.rewardPoints || 0));
                 }}
             />
+
+            {/* Complete Profile Modal (Mandatory) */}
+            {user?.role === 'user' && (
+                <CompleteProfileModal 
+                    isOpen={!user?.profileCompleted} 
+                    onSuccess={(updatedUser) => {
+                        console.log("Profile completed successfully");
+                    }} 
+                />
+            )}
         </>
     );
 };

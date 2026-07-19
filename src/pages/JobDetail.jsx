@@ -3,11 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import Navbar from '../components/Navbar';
 import BackButton from '../components/BackButton';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
+// ── Main JobDetail Page ────────────────────────────────────────────────────────
 const JobDetail = () => {
     const { id } = useParams();
+    const { user } = useAuth();
     const [job, setJob] = useState(null);
+    const [myAppStatus, setMyAppStatus] = useState(null); // null = not applied
+    const [applying, setApplying] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -19,17 +24,39 @@ const JobDetail = () => {
                 console.error("Error", error);
             }
         };
+        const fetchMyApplications = async () => {
+            try {
+                const { data } = await axios.get('/applications/my');
+                const match = data.find(app => app.job?._id === id || app.job === id);
+                if (match) setMyAppStatus(match.status);
+            } catch (error) {
+                console.error('Error fetching applications:', error);
+            }
+        };
         fetchJob();
+        fetchMyApplications();
     }, [id]);
 
     const handleApply = async () => {
-        try {
-            await axios.post(`/applications/${id}`);
-            alert("Application Successful!");
-            navigate('/my-applications');
-        } catch (error) {
-            alert(error.response?.data?.message || "Failed to apply");
+        if (!user) {
+            navigate('/login');
+            return;
         }
+        if (!user.profileCompleted) {
+            alert('Please complete your profile from the dashboard before applying.');
+            return;
+        }
+
+        setApplying(true);
+        try {
+            await axios.post(`/applications/${job._id}`);
+            setMyAppStatus('applied');
+            setJob(prev => ({ ...prev, remainingSlots: prev.remainingSlots - 1 }));
+        } catch (error) {
+            console.error("Error applying:", error);
+            alert(error.response?.data?.message || 'Failed to apply');
+        }
+        setApplying(false);
     };
 
     if (!job) return <div>Loading...</div>;
@@ -72,6 +99,15 @@ const JobDetail = () => {
                                     <div className="text-lg font-bold text-primary">₹{job.paymentAmount}</div>
                                 </div>
                             </div>
+
+                            {/* Info note about required documents */}
+                            <div className="flex gap-3 p-4 bg-blue-50 border border-blue-100 rounded-2xl text-sm text-blue-800">
+                                <span className="text-xl flex-shrink-0">📋</span>
+                                <div>
+                                    <p className="font-bold mb-0.5">Application Requirements</p>
+                                    <p className="font-medium text-blue-700">You will need to provide personal details and upload a government-issued ID (Aadhaar, Passport, Driving Licence, or Voter ID) to apply.</p>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="bg-gradient-to-br from-green-50 to-blue-50 p-8 rounded-3xl h-fit border border-green-100">
@@ -83,9 +119,27 @@ const JobDetail = () => {
                                 <div className="text-text-muted font-medium text-sm uppercase tracking-wide">spots remaining out of {job.totalSlots}</div>
                             </div>
 
-                            {job.remainingSlots > 0 ? (
-                                <button onClick={handleApply} className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-                                    Apply Now
+                            {myAppStatus ? (
+                                <div className="w-full py-4 rounded-xl text-center font-bold text-lg border-2"
+                                    style={{
+                                        background: myAppStatus === 'applied' ? '#eff6ff' : myAppStatus === 'admitted' ? '#f0fdf4' : '#faf5ff',
+                                        borderColor: myAppStatus === 'applied' ? '#bfdbfe' : myAppStatus === 'admitted' ? '#bbf7d0' : '#e9d5ff',
+                                        color: myAppStatus === 'applied' ? '#1d4ed8' : myAppStatus === 'admitted' ? '#15803d' : '#7e22ce',
+                                    }}
+                                >
+                                    {myAppStatus === 'applied' && '📝 Application Submitted'}
+                                    {myAppStatus === 'admitted' && '✅ You\'re Admitted!'}
+                                    {myAppStatus === 'paid' && '💰 Payment Released'}
+                                    {!['applied','admitted','paid'].includes(myAppStatus) && `Status: ${myAppStatus}`}
+                                </div>
+                            ) : job.remainingSlots > 0 ? (
+                                <button
+                                    id="apply-now-btn"
+                                    onClick={handleApply}
+                                    disabled={applying}
+                                    className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/30 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {applying ? 'Applying...' : 'Apply Now'}
                                 </button>
                             ) : (
                                 <button disabled className="w-full py-4 rounded-xl border-2 border-gray-200 text-gray-400 font-bold text-lg cursor-not-allowed">
@@ -96,6 +150,7 @@ const JobDetail = () => {
                     </div>
                 </motion.div>
             </div>
+
         </>
     );
 };

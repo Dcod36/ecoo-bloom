@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
+import UserProfileModal from './UserProfileModal';
 
 const wasteTypeLabels = {
     plastic: '🧴 Plastic',
@@ -23,6 +24,7 @@ const ReviewIssuesModal = ({ isOpen, onClose }) => {
     const [issues, setIssues] = useState([]);
     const [loading, setLoading] = useState(false);
     const [verifying, setVerifying] = useState(null);
+    const [selectedUserId, setSelectedUserId] = useState(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -149,7 +151,19 @@ const ReviewIssuesModal = ({ isOpen, onClose }) => {
                                                     <p><strong>📍 Location:</strong> {issue.location?.split(',').slice(0, 2).join(', ')}</p>
                                                     <p><strong>🗑️ Type:</strong> {wasteTypeLabels[issue.wasteType] || issue.wasteType}</p>
                                                     <p><strong>📦 Quantity:</strong> {quantityLabels[issue.quantity] || issue.quantity}</p>
-                                                    <p><strong>👤 Reported by:</strong> {issue.reportedBy?.name || 'Unknown'}</p>
+                                                    <p>
+                                                        <strong>👤 Reported by:</strong>{' '}
+                                                        {issue.reportedBy ? (
+                                                            <button 
+                                                                onClick={() => setSelectedUserId(issue.reportedBy._id || issue.createdBy)}
+                                                                className="text-blue-600 font-semibold hover:underline"
+                                                            >
+                                                                {issue.reportedBy.name}
+                                                            </button>
+                                                        ) : (
+                                                            'Unknown'
+                                                        )}
+                                                    </p>
                                                     {issue.description && (
                                                         <p><strong>📝 Description:</strong> {issue.description}</p>
                                                     )}
@@ -189,6 +203,11 @@ const ReviewIssuesModal = ({ isOpen, onClose }) => {
                     </div>
                 </motion.div>
             </motion.div>
+            <UserProfileModal 
+                userId={selectedUserId} 
+                isOpen={!!selectedUserId} 
+                onClose={() => setSelectedUserId(null)} 
+            />
         </AnimatePresence>
     );
 };

@@ -85,14 +85,23 @@ Provide your analysis:`;
             });
         }
 
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        try {
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const analysis = response.text();
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const analysis = response.text();
 
-        res.json({ analysis });
+            res.json({ analysis });
+        } catch (geminiError) {
+            console.warn('Gemini API failed for analysis, falling back to local text:', geminiError.message);
+            const sortedAreas = Object.entries(areaData).sort((a, b) => b[1].count - a[1].count);
+            const topArea = sortedAreas[0];
+            return res.json({
+                analysis: `Based on ${wasteLocations.length} recorded locations, the area with highest waste concentration is ${topArea[0]} with ${topArea[1].count} recorded points. Consider prioritizing cleanup efforts in this region.`
+            });
+        }
     } catch (error) {
         console.error('Gemini API error:', error);
         res.status(500).json({ message: 'Error generating analysis', error: error.message });
@@ -155,10 +164,11 @@ Top 5 affected areas: ${topLocations.map(([l, c]) => `${l}: ${c} markers`).join(
 `;
 
             if (apiKey) {
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+                try {
+                    const genAI = new GoogleGenerativeAI(apiKey);
+                    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-                const prompt = `You are a friendly environmental analyst chatbot. Provide a comprehensive analysis based on this waste data:
+                    const prompt = `You are a friendly environmental analyst chatbot. Provide a comprehensive analysis based on this waste data:
 
 ${wasteData}
 
@@ -170,9 +180,13 @@ Give a detailed but friendly response covering:
 
 Format nicely with emojis and clear sections. Keep it under 300 words.`;
 
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
-                return res.json({ response: response.text() });
+                    const result = await model.generateContent(prompt);
+                    const response = await result.response;
+                    return res.json({ response: response.text() });
+                } catch (geminiError) {
+                    console.warn('Gemini API failed, falling back to local text:', geminiError.message);
+                    // Fall back to the non-Gemini response below
+                }
             }
 
             // Fallback without Gemini
@@ -253,10 +267,11 @@ Quantity breakdown: Small: ${quantityCount.small}, Medium: ${quantityCount.mediu
 `;
 
         if (apiKey) {
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+            try {
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-            const prompt = `You are a friendly environmental assistant chatbot. A user asked: "${question}"
+                const prompt = `You are a friendly environmental assistant chatbot. A user asked: "${question}"
 
 Based on the following waste data for the area, provide a helpful, conversational response (3-5 sentences):
 
@@ -264,10 +279,14 @@ ${wasteData}
 
 Mention the total count, most common waste type, and give a brief recommendation. Be friendly and helpful.`;
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
 
-            return res.json({ response: response.text() });
+                return res.json({ response: response.text() });
+            } catch (geminiError) {
+                console.warn('Gemini API failed, falling back to local text:', geminiError.message);
+                // Fall back to the non-Gemini response below
+            }
         }
 
         // Fallback response without Gemini

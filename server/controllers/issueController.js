@@ -1,5 +1,6 @@
 const IssueReport = require('../models/IssueReport');
 const User = require('../models/User');
+const WasteLocation = require('../models/WasteLocation');
 
 // Create a new issue report
 const createIssue = async (req, res) => {
@@ -69,10 +70,20 @@ const verifyIssue = async (req, res) => {
         issue.verifiedAt = new Date();
         await issue.save();
 
-        // If verified, give +10 reward points to the reporter
+        // If verified, give +10 reward points to the reporter and add to Waste Map
         if (status === 'verified') {
             await User.findByIdAndUpdate(issue.reportedBy, {
                 $inc: { rewardPoints: 10 }
+            });
+            
+            // Add it to the waste map
+            await WasteLocation.create({
+                wasteType: issue.wasteType,
+                quantity: issue.quantity,
+                latitude: issue.latitude,
+                longitude: issue.longitude,
+                address: issue.location,
+                createdBy: issue.reportedBy
             });
         }
 

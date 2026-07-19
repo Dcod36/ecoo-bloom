@@ -1,7 +1,7 @@
 const Application = require('../models/Application');
 const Job = require('../models/Job');
 
-// @desc    Apply for a job
+// @desc    Apply for a job (with personal info + ID document upload)
 // @route   POST /api/applications/:jobId
 // @access  Private/User
 const applyForJob = async (req, res) => {
@@ -23,6 +23,11 @@ const applyForJob = async (req, res) => {
 
         if (alreadyApplied) {
             return res.status(400).json({ message: 'You have already applied for this job' });
+        }
+
+        // Check if user has completed profile
+        if (!req.user.profileCompleted) {
+            return res.status(403).json({ message: 'Please complete your profile before applying.' });
         }
 
         const application = new Application({
@@ -73,7 +78,10 @@ const getJobApplications = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized to view these applications' });
         }
 
-        const applications = await Application.find({ job: req.params.jobId }).populate('user', 'name email rewardPoints');
+        const applications = await Application.find({ job: req.params.jobId }).populate(
+            'user',
+            'name email rewardPoints profileCompleted phone dateOfBirth address emergencyContact experience idDocumentUrl idDocumentName'
+        );
         res.json(applications);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -96,7 +104,7 @@ const markAsPaid = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized' });
         }
 
-        application.status = 'paid'; // or 'Payment Released' as per UI rqt, keeping simple enum for now
+        application.status = 'paid';
         await application.save();
 
         res.json(application);
@@ -113,7 +121,7 @@ const admitApplication = async (req, res) => {
         const application = await Application.findById(req.params.id).populate('job');
 
         if (!application) {
-            return res.status(404).json({ message: 'Application not found' });
+            return res.status(404).json({ message: 'Application not found' })
         }
 
         // Verify admin owns the job
@@ -124,7 +132,7 @@ const admitApplication = async (req, res) => {
         application.status = 'admitted';
         await application.save();
 
-        const updatedApp = await Application.findById(req.params.id).populate('user', 'name email rewardPoints');
+        const updatedApp = await Application.findById(req.params.id).populate('user', 'name email rewardPoints profileCompleted phone dateOfBirth address emergencyContact experience idDocumentUrl idDocumentName');
         res.json(updatedApp);
     } catch (error) {
         res.status(500).json({ message: error.message });

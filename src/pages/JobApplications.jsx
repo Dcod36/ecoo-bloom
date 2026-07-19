@@ -3,12 +3,26 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import Navbar from '../components/Navbar';
 import BackButton from '../components/BackButton';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import UserProfileModal from '../components/UserProfileModal';
 
+const API_BASE = 'http://localhost:5000';
+
+const getStatusBadge = (status) => {
+    const styles = {
+        applied: 'bg-blue-100 text-blue-700',
+        admitted: 'bg-green-100 text-green-700',
+        paid: 'bg-purple-100 text-purple-700',
+    };
+    return styles[status] || 'bg-gray-100 text-gray-700';
+};
+
+// ── Main JobApplications Page ──────────────────────────────────────────────────
 const JobApplications = () => {
     const { id } = useParams();
     const [apps, setApps] = useState([]);
     const [job, setJob] = useState(null);
+    const [selectedApp, setSelectedApp] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -27,8 +41,9 @@ const JobApplications = () => {
 
     const handleAdmit = async (appId) => {
         try {
-            const { data } = await axios.put(`/applications/${appId}/admit`);
+            await axios.put(`/applications/${appId}/admit`);
             setApps(apps.map(a => a._id === appId ? { ...a, status: 'admitted' } : a));
+            setSelectedApp(prev => prev?._id === appId ? { ...prev, status: 'admitted' } : prev);
         } catch (error) {
             alert("Error admitting volunteer");
         }
@@ -38,6 +53,7 @@ const JobApplications = () => {
         try {
             await axios.patch(`/applications/${appId}/pay`);
             setApps(apps.map(a => a._id === appId ? { ...a, status: 'paid' } : a));
+            setSelectedApp(prev => prev?._id === appId ? { ...prev, status: 'paid' } : prev);
         } catch (error) {
             alert("Error processing payment");
         }
@@ -51,15 +67,6 @@ const JobApplications = () => {
         } catch (error) {
             console.error(error);
         }
-    };
-
-    const getStatusBadge = (status) => {
-        const styles = {
-            applied: 'bg-blue-100 text-blue-700',
-            admitted: 'bg-green-100 text-green-700',
-            paid: 'bg-purple-100 text-purple-700'
-        };
-        return styles[status] || 'bg-gray-100 text-gray-700';
     };
 
     return (
@@ -92,7 +99,7 @@ const JobApplications = () => {
                                     <tr className="bg-gray-50 border-b border-gray-100">
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Volunteer</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reward Points</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID Doc</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                         <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
@@ -101,11 +108,17 @@ const JobApplications = () => {
                                     {apps.map(app => (
                                         <tr key={app._id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-6 py-4 font-semibold text-gray-900">{app.user.name}</td>
-                                            <td className="px-6 py-4 text-gray-600">{app.user.email}</td>
+                                            <td className="px-6 py-4 text-gray-600 text-sm">{app.user.email}</td>
                                             <td className="px-6 py-4">
-                                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-bold text-sm">
-                                                    ⭐ {app.user.rewardPoints || 0}
-                                                </span>
+                                                {app.user.idDocumentUrl ? (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">
+                                                        🪪 Uploaded
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-600 text-xs font-bold">
+                                                        ⚠ Missing
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${getStatusBadge(app.status)}`}>
@@ -113,11 +126,17 @@ const JobApplications = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <div className="flex gap-2 justify-end">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => setSelectedApp(app)}
+                                                        className="px-3 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold hover:bg-blue-200 transition-all"
+                                                    >
+                                                        👁 Profile
+                                                    </button>
                                                     {app.status === 'applied' && (
                                                         <button
                                                             onClick={() => handleAdmit(app._id)}
-                                                            className="px-4 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 shadow-md shadow-green-500/20 hover:shadow-lg transition-all"
+                                                            className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 shadow-sm transition-all"
                                                         >
                                                             ✅ Admit
                                                         </button>
@@ -125,13 +144,10 @@ const JobApplications = () => {
                                                     {app.status === 'admitted' && (
                                                         <button
                                                             onClick={() => handlePay(app._id)}
-                                                            className="px-4 py-1.5 rounded-lg bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 shadow-md shadow-purple-500/20 hover:shadow-lg transition-all"
+                                                            className="px-3 py-1.5 rounded-lg bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 shadow-sm transition-all"
                                                         >
-                                                            💰 Mark Paid (₹{job?.paymentAmount})
+                                                            💰 Pay
                                                         </button>
-                                                    )}
-                                                    {app.status === 'paid' && (
-                                                        <span className="text-purple-600 font-bold flex items-center justify-end gap-1">💰 Paid ✓</span>
                                                     )}
                                                 </div>
                                             </td>
@@ -150,6 +166,12 @@ const JobApplications = () => {
                     </div>
                 </motion.div>
             </div>
+
+            <UserProfileModal
+                userId={selectedApp?.user?._id}
+                isOpen={!!selectedApp}
+                onClose={() => setSelectedApp(null)}
+            />
         </>
     );
 };

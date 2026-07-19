@@ -24,6 +24,19 @@ const userSchema = mongoose.Schema({
         type: Number,
         default: 0,
     },
+    profileCompleted: {
+        type: Boolean,
+        default: false,
+    },
+    // Personal info
+    phone: { type: String, default: '' },
+    dateOfBirth: { type: String, default: '' },
+    address: { type: String, default: '' },
+    emergencyContact: { type: String, default: '' },
+    experience: { type: String, default: '' },
+    // ID document
+    idDocumentUrl: { type: String, default: '' },
+    idDocumentName: { type: String, default: '' },
 }, {
     timestamps: true,
 });
@@ -34,9 +47,9 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 // Encrypt password using bcrypt
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function () {
     if (!this.isModified('password')) {
-        next();
+        return;
     }
 
     const salt = await bcrypt.genSalt(10);
