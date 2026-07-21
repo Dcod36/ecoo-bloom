@@ -18,7 +18,7 @@ const Signup = () => {
         try {
             await register(name, email, password, role);
             // Redirect to login page after successful registration
-            navigate('/login');
+            navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed');
         }
