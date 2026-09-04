@@ -9,7 +9,10 @@ const generateToken = (id) => {
 };
 
 const registerUser = async (req, res) => {
-    const { name, email, password, role } = req.body;
+    // NOTE: 'role' is intentionally NOT taken from req.body.
+    // All public registrations are locked to 'user'.
+    // Admin accounts can only be created via the seed script (createSuperAdmin.js).
+    const { name, email, password } = req.body;
 
     try {
         const userExists = await User.findOne({ email });
@@ -22,7 +25,7 @@ const registerUser = async (req, res) => {
             name,
             email,
             password,
-            role: role || 'user',
+            role: 'user', // always forced to 'user' — cannot be overridden by client
         });
 
         if (user) {

@@ -8,7 +8,7 @@ const Signup = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('user');
+
     const [error, setError] = useState('');
     const { register } = useAuth();
     const navigate = useNavigate();
@@ -16,8 +16,7 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await register(name, email, password, role);
-            // Redirect to login page after successful registration
+            await register(name, email, password);
             navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed');
@@ -73,17 +72,7 @@ const Signup = () => {
                                 className="w-full px-4 py-3 rounded-xl border border-slate-600 bg-slate-900/50 text-white placeholder-slate-500 focus:bg-slate-900/80 focus:ring-2 focus:ring-green-500/30 focus:border-green-500 transition-all outline-none hover:border-slate-500"
                             />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-300 ml-1">I am a...</label>
-                            <select
-                                value={role}
-                                onChange={(e) => setRole(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-600 bg-slate-900/50 text-white focus:bg-slate-900/80 focus:ring-2 focus:ring-green-500/30 focus:border-green-500 transition-all outline-none cursor-pointer hover:border-slate-500"
-                            >
-                                <option value="user">Volunteer</option>
-                                <option value="admin">Organizer (NGO/Admin)</option>
-                            </select>
-                        </div>
+
                         <button type="submit" className="w-full py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-green-500 to-cyan-500 hover:shadow-lg hover:shadow-green-500/30 hover:scale-[1.02] transition-all duration-300 mt-2">
                             Sign Up
                         </button>
