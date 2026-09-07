@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import Navbar from '../components/Navbar';
@@ -17,26 +17,110 @@ const getStatusBadge = (status) => {
     return styles[status] || 'bg-gray-100 text-gray-700';
 };
 
+// ── Reward Points Panel ────────────────────────────────────────────────────────
+const RewardPointsPanel = ({ app, onAdjust }) => {
+    const [customPoints, setCustomPoints] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [feedback, setFeedback] = useState(null); // { type: 'success'|'error', msg }
+
+    const handleAdjust = async (points, reason) => {
+        setLoading(true);
+        setFeedback(null);
+        try {
+            const res = await onAdjust(app._id, points, reason);
+            setFeedback({ type: 'success', msg: res.message });
+            setCustomPoints('');
+        } catch (err) {
+            setFeedback({ type: 'error', msg: err.response?.data?.message || 'Failed to adjust points' });
+        }
+        setLoading(false);
+        setTimeout(() => setFeedback(null), 3000);
+    };
+
+    const handleCustom = () => {
+        const pts = parseInt(customPoints, 10);
+        if (isNaN(pts) || pts === 0) return;
+        handleAdjust(pts, pts > 0 ? 'Custom reward' : 'Custom deduction');
+    };
+
+    return (
+        <div className="mt-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
+            <p className="text-xs font-bold text-amber-700 mb-2 uppercase tracking-wider">⭐ Reward Points</p>
+            <div className="flex flex-wrap gap-2 mb-2">
+                <button
+                    onClick={() => handleAdjust(20, 'Completed job')}
+                    disabled={loading}
+                    className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 disabled:opacity-50 transition-all flex items-center gap-1"
+                >
+                    ✅ +20 Completed
+                </button>
+                <button
+                    onClick={() => handleAdjust(-10, 'No show')}
+                    disabled={loading}
+                    className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-bold hover:bg-red-600 disabled:opacity-50 transition-all flex items-center gap-1"
+                >
+                    ❌ -10 No Show
+                </button>
+            </div>
+            <div className="flex gap-2">
+                <input
+                    type="number"
+                    value={customPoints}
+                    onChange={e => setCustomPoints(e.target.value)}
+                    placeholder="Custom pts (e.g. +15 or -5)"
+                    className="flex-1 px-2 py-1.5 text-xs border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                />
+                <button
+                    onClick={handleCustom}
+                    disabled={loading || !customPoints}
+                    className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 disabled:opacity-40 transition-all"
+                >
+                    Apply
+                </button>
+            </div>
+            <AnimatePresence>
+                {feedback && (
+                    <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className={`mt-2 text-xs font-semibold ${feedback.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+                    >
+                        {feedback.type === 'success' ? '✅' : '❌'} {feedback.msg}
+                    </motion.p>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
 // ── Main JobApplications Page ──────────────────────────────────────────────────
 const JobApplications = () => {
     const { id } = useParams();
     const [apps, setApps] = useState([]);
     const [job, setJob] = useState(null);
     const [selectedApp, setSelectedApp] = useState(null);
+    const [expandedReward, setExpandedReward] = useState(null); // appId with open reward panel
     const navigate = useNavigate();
+    const pollRef = useRef(null);
+
+    const fetchData = async () => {
+        try {
+            const jobRes = await axios.get(`/jobs/${id}`);
+            setJob(jobRes.data);
+            const appsRes = await axios.get(`/applications/job/${id}`);
+            setApps(appsRes.data);
+        } catch (error) {
+            console.error("Error", error);
+        }
+    };
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const jobRes = await axios.get(`/jobs/${id}`);
-                setJob(jobRes.data);
-                const appsRes = await axios.get(`/applications/job/${id}`);
-                setApps(appsRes.data);
-            } catch (error) {
-                console.error("Error", error);
-            }
-        };
         fetchData();
+
+        // Poll every 10 seconds so new applicants appear live
+        pollRef.current = setInterval(fetchData, 10000);
+        return () => clearInterval(pollRef.current);
     }, [id]);
 
     const handleAdmit = async (appId) => {
@@ -57,6 +141,11 @@ const JobApplications = () => {
         } catch (error) {
             alert("Error processing payment");
         }
+    };
+
+    const handleAdjustPoints = async (appId, points, reason) => {
+        const res = await axios.patch(`/applications/${appId}/points`, { points, reason });
+        return res.data;
     };
 
     const markCompleted = async () => {
@@ -107,9 +196,9 @@ const JobApplications = () => {
                                 <tbody className="divide-y divide-gray-100">
                                     {apps.map(app => (
                                         <tr key={app._id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 font-semibold text-gray-900">{app.user.name}</td>
-                                            <td className="px-6 py-4 text-gray-600 text-sm">{app.user.email}</td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 font-semibold text-gray-900 align-top">{app.user.name}</td>
+                                            <td className="px-6 py-4 text-gray-600 text-sm align-top">{app.user.email}</td>
+                                            <td className="px-6 py-4 align-top">
                                                 {app.user.idDocumentUrl ? (
                                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">
                                                         🪪 Uploaded
@@ -120,35 +209,63 @@ const JobApplications = () => {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 align-top">
                                                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${getStatusBadge(app.status)}`}>
                                                     {app.status}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <button
-                                                        onClick={() => setSelectedApp(app)}
-                                                        className="px-3 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold hover:bg-blue-200 transition-all"
-                                                    >
-                                                        👁 Profile
-                                                    </button>
-                                                    {app.status === 'applied' && (
+                                            <td className="px-6 py-4 align-top">
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <div className="flex justify-end gap-2">
                                                         <button
-                                                            onClick={() => handleAdmit(app._id)}
-                                                            className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 shadow-sm transition-all"
+                                                            onClick={() => setSelectedApp(app)}
+                                                            className="px-3 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold hover:bg-blue-200 transition-all"
                                                         >
-                                                            ✅ Admit
+                                                            👁 Profile
                                                         </button>
-                                                    )}
-                                                    {app.status === 'admitted' && (
-                                                        <button
-                                                            onClick={() => handlePay(app._id)}
-                                                            className="px-3 py-1.5 rounded-lg bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 shadow-sm transition-all"
-                                                        >
-                                                            💰 Pay
-                                                        </button>
-                                                    )}
+                                                        {app.status === 'applied' && (
+                                                            <button
+                                                                onClick={() => handleAdmit(app._id)}
+                                                                className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 shadow-sm transition-all"
+                                                            >
+                                                                ✅ Admit
+                                                            </button>
+                                                        )}
+                                                        {app.status === 'admitted' && (
+                                                            <button
+                                                                onClick={() => handlePay(app._id)}
+                                                                className="px-3 py-1.5 rounded-lg bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 shadow-sm transition-all"
+                                                            >
+                                                                💰 Pay
+                                                            </button>
+                                                        )}
+                                                        {/* Show reward toggle for admitted or paid volunteers */}
+                                                        {(app.status === 'admitted' || app.status === 'paid') && (
+                                                            <button
+                                                                onClick={() => setExpandedReward(expandedReward === app._id ? null : app._id)}
+                                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${expandedReward === app._id ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+                                                            >
+                                                                ⭐ Points
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Reward Points Panel — expands inline */}
+                                                    <AnimatePresence>
+                                                        {expandedReward === app._id && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                exit={{ opacity: 0, height: 0 }}
+                                                                className="w-full overflow-hidden"
+                                                            >
+                                                                <RewardPointsPanel
+                                                                    app={app}
+                                                                    onAdjust={handleAdjustPoints}
+                                                                />
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
                                                 </div>
                                             </td>
                                         </tr>

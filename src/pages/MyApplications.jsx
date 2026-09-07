@@ -21,8 +21,14 @@ const MyApplications = () => {
             fetchApps();
         };
 
+        // Poll every 10 seconds so admin changes reflect without logout
+        const pollInterval = setInterval(fetchApps, 10000);
+
         window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
+        return () => {
+            window.removeEventListener('focus', handleFocus);
+            clearInterval(pollInterval);
+        };
     }, []);
 
     return (

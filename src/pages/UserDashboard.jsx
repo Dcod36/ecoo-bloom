@@ -52,6 +52,16 @@ const UserDashboard = () => {
                     }
                 });
                 setMyApplications(appMap);
+
+                // Merge applied jobs (including full/closed ones) into jobs list
+                // so status badges always show even if the job is no longer "open"
+                setJobs(prev => {
+                    const existingIds = new Set(prev.map(j => j._id));
+                    const appliedJobs = data
+                        .filter(app => app.job && app.job._id && !existingIds.has(app.job._id))
+                        .map(app => app.job);
+                    return appliedJobs.length > 0 ? [...prev, ...appliedJobs] : prev;
+                });
             } catch (error) {
                 console.error('Error fetching applications:', error);
             }
@@ -66,8 +76,17 @@ const UserDashboard = () => {
             fetchMyApplications();
         };
 
+        // Poll every 10 seconds so status changes from admin reflect without logout
+        const pollInterval = setInterval(() => {
+            fetchRewardPoints();
+            fetchMyApplications();
+        }, 10000);
+
         window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
+        return () => {
+            window.removeEventListener('focus', handleFocus);
+            clearInterval(pollInterval);
+        };
     }, []);
 
     const fetchWasteData = async () => {
